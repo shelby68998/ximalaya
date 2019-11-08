@@ -1,12 +1,14 @@
 # -*- coding:utf-8 -*-
 from tkinter import END
 from tkinter import EXTENDED
+from tkinter import HORIZONTAL
 from tkinter import filedialog
 from tkinter import ttk
 from url_normalize import url_normalize
 from urllib import parse
 import json
 import os
+import sys
 import requests
 import collections
 import threading
@@ -41,9 +43,8 @@ def resolve_album(album_id, page_size=20):
     html = requests.get(url)
     all = json.loads(html.text)
     max_page_id = all['data']['maxPageId']
-    # total_counts = all['data']['totalCount']
-    # last_page_totals = int(total_counts) % page_size
     list_audio.clear()
+    listbox_audio.delete(0, END)
     for n in range(1, max_page_id + 1):
         url = form_album_url(album_id, page_id=n, page_size=page_size)
         html = requests.get(url)
@@ -58,7 +59,6 @@ def resolve_album(album_id, page_size=20):
 
 
 def open_link():
-    listbox_audio.delete(0, END)
     album_id = url_normalize(entry_url.get()).rstrip('/').rsplit('/', 1)[-1]
     if not album_id.isdigit():
         show_status('[ERROR] 专辑链接错误')
@@ -70,25 +70,35 @@ def open_link():
 def download():
     path = entry_download_dir.get()
     if not os.path.isdir(path):
-        os.makedirs(path)
+        try:
+            os.makedirs(path)
+        except OSError:
+            show_status('[ERROR] 目录无效')
     selected_indexes = listbox_audio.curselection()
     if not selected_indexes:
         return
     show_status('' + str(len(selected_indexes)) + '个任务正在下载')
-    for n in range(0, len(selected_indexes)):
-        audio = list_audio[int(selected_indexes[n])]
-        file_name = path + '/' + audio.name + '.' + variable_audio_format.get()
-        url = audio.url_m4a if variable_audio_format.get() == 'm4a' else audio.url_mp3
-        response = requests.get(url, headers=http_headers)
-        with open(file_name, 'wb') as code:
-            code.write(response.content)
-        show_status('[' + file_name + '] 下载成功')
+    prograss_bar.start()
+    try:
+        for n in range(0, len(selected_indexes)):
+            audio = list_audio[int(selected_indexes[n])]
+            file_name = path + '/' + audio.name + '.' + variable_audio_format.get()
+            url = audio.url_m4a if variable_audio_format.get() == 'm4a' else audio.url_mp3
+            try:
+                response = requests.get(url, headers=http_headers)
+                with open(file_name, 'wb') as code:
+                    code.write(response.content)
+                show_status('[' + file_name + '] 下载成功')
+            except:
+                show_status(sys.exc_info()[0])
+                show_status('[ERROR] [' + file_name + '] 下载失败')
+    finally:
+        prograss_bar.stop()
 
 
 def open_album():
     if not treeview_album.selection():
         return
-    listbox_audio.delete(0, END)
     for item in treeview_album.selection():
         item_text = treeview_album.item(item, 'values')
         album_id = item_text[1]
@@ -104,12 +114,12 @@ def clear_list(tree):
         tree.delete(item)
 
 
-def search():  # 按照关键词进行搜索
-    show_status('搜索线程开始')
+def search_keyword():
+    show_status('搜索关键词开始')
     clear_list(treeview_album)
     keyword = parse.quote(entry_search_text.get())
     if not keyword:
-        show_status('[ERROR] 请输入关键词')
+        show_status('[ERROR] 请输入有效关键词')
         return
     url = form_search_url(keyword)
     html = requests.get(url, headers=http_headers)
@@ -125,7 +135,7 @@ def search():  # 按照关键词进行搜索
             title = x['title']
             id = x['id']
             treeview_album.insert('', 'end', values=(title, id))
-    show_status('搜索线程结束')
+    show_status('搜索关键词成功')
 
 
 def download_button_click():
@@ -141,7 +151,7 @@ def treeview_album_click(event):
 
 
 def search_button_click():
-    threading.Thread(target=search).start()
+    threading.Thread(target=search_keyword).start()
 
 
 def select_dir_button_click():
@@ -157,54 +167,54 @@ def show_status(status):
     text_status.configure(state='disable')
 
 
+# Build GUI
+window = tk.Tk()
+window.geometry('917x564')  # +34+306
+window.title('喜马拉雅专辑下载, Originally by Snow')
+window.resizable(0, 0)
+canvas = tk.Canvas(window, bg='white')
+canvas.place(height=88, width=904, x=5, y=469)
+# TODO: 进度条
+prograss_bar = ttk.Progressbar(window, orient=HORIZONTAL, length=700, mode='indeterminate')
+prograss_bar.place(height=22, width=904, x=5, y=420)
+entry_search_text = ttk.Entry(window)
+entry_search_text.place(height=34, width=531, x=4, y=5)
+entry_url = ttk.Entry(window)
+entry_url.place(height=34, width=531, x=4, y=42)
+entry_download_dir = ttk.Entry(window)
+entry_download_dir.place(height=34, width=531, x=4, y=80)
+entry_download_dir.insert(0, os.getcwd())
+button1 = ttk.Button(window, text='搜索', command=search_button_click)
+button1.place(height=34, width=123, x=539, y=5)
+button2 = ttk.Button(window, text='下载选中', command=download_button_click)
+button2.place(height=72, width=246, x=664, y=5)
+button3 = ttk.Button(window, text='打开链接', command=open_link_button_click)
+button3.place(height=34, width=123, x=539, y=43)
+button4 = ttk.Button(window, text='选择目录', command=select_dir_button_click)
+button4.place(height=34, width=123, x=539, y=80)
+
+label_audio_format = tk.Label(window, text='音频格式')
+label_audio_format.place(height=40, width=123, x=664, y=77)
+variable_audio_format = tk.StringVar(window)
+option_menu_audio_format = ttk.OptionMenu(
+    window, variable_audio_format, audio_format_options[0], *audio_format_options)
+option_menu_audio_format.place(height=40, width=123, x=787, y=77)
+
+text_status = tk.Text(window)
+text_status.place(height=88, width=904, x=5, y=469)
+
+column_headers = ('TITLE', 'ID')
+treeview_album = ttk.Treeview(window, height=10, show='headings', columns=column_headers)
+treeview_album.place(height=299, width=530, x=5, y=116)
+treeview_album.column(column_headers[0], width=330, anchor='center')
+treeview_album.column(column_headers[1], width=200, anchor='center')
+treeview_album.heading(column_headers[0], text='专辑名')
+treeview_album.heading(column_headers[1], text='专辑编号')
+treeview_album.bind('<Double-1>', treeview_album_click)
+
+listbox_audio = tk.Listbox(window, selectmode=EXTENDED)
+listbox_audio.place(height=299, width=370, x=539, y=116)
+
 if __name__ == '__main__':
-    # Build GUI
-    window = tk.Tk()
-    window.geometry('917x564')  # +34+306
-    window.title('喜马拉雅专辑下载, Originally by Snow')
-    window.resizable(0, 0)
-    canvas = tk.Canvas(window, bg='white')
-    canvas.place(height=88, width=904, x=5, y=469)
-    # TODO: 进度条
-    label_prograss_bar = tk.Label(window, text='进度条')
-    label_prograss_bar.place(height=22, width=904, x=5, y=420)
-    entry_search_text = ttk.Entry(window)
-    entry_search_text.place(height=34, width=531, x=4, y=5)
-    entry_url = ttk.Entry(window)
-    entry_url.place(height=34, width=531, x=4, y=42)
-    entry_download_dir = ttk.Entry(window)
-    entry_download_dir.place(height=34, width=531, x=4, y=80)
-    entry_download_dir.insert(0, os.getcwd())
-    button1 = ttk.Button(window, text='搜索', command=search_button_click)
-    button1.place(height=34, width=123, x=539, y=5)
-    button2 = ttk.Button(window, text='下载选中', command=download_button_click)
-    button2.place(height=77, width=246, x=664, y=5)
-    button3 = ttk.Button(window, text='打开链接', command=open_link_button_click)
-    button3.place(height=34, width=123, x=539, y=43)
-    button4 = ttk.Button(window, text='选择目录', command=select_dir_button_click)
-    button4.place(height=34, width=123, x=539, y=80)
-
-    label_audio_format = tk.Label(window, text='音频格式')
-    label_audio_format.place(height=40, width=123, x=664, y=82)
-    variable_audio_format = tk.StringVar(window)
-    option_menu_audio_format = ttk.OptionMenu(
-        window, variable_audio_format, audio_format_options[0], *audio_format_options)
-    option_menu_audio_format.place(height=40, width=123, x=787, y=82)
-
-    text_status = tk.Text(window)
-    text_status.place(height=88, width=904, x=5, y=469)
-
-    column_headers = ('TITLE', 'ID')
-    treeview_album = ttk.Treeview(window, height=10, show='headings', columns=column_headers)
-    treeview_album.place(height=299, width=530, x=5, y=116)
-    treeview_album.column(column_headers[0], width=330, anchor='center')
-    treeview_album.column(column_headers[1], width=200, anchor='center')
-    treeview_album.heading(column_headers[0], text='专辑名')
-    treeview_album.heading(column_headers[1], text='专辑编号')
-    treeview_album.bind('<Double-1>', treeview_album_click)
-
-    listbox_audio = tk.Listbox(window, selectmode=EXTENDED)
-    listbox_audio.place(height=299, width=370, x=539, y=116)
-
     show_status('启动成功')
     window.mainloop()
