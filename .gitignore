@@ -1,2 +1,7 @@
+# Local configs
+setup.cfg
+
+# Downloads files
 *.mp3
 *.m4a
+
