@@ -1,4 +1,14 @@
-# ximalaya
-喜马拉雅专辑批量下载
+[Forked from github.com/hkslover/ximalaya]
+# ximalaya 喜马拉雅音频下载
+A ximalaya.com bulk audio download tool written in python with GUI.
+![](https://user-images.githubusercontent.com/12215591/68463410-67350580-01c3-11ea-9f9d-01427e0e072a.png)
 
-![](https://gitee.com/hkslover/blog_img/raw/master/%E6%B7%B1%E5%BA%A6%E6%88%AA%E5%9B%BE_%E9%80%89%E6%8B%A9%E5%8C%BA%E5%9F%9F_20191013121609.png)
+## Tested environment
+- Mac OS 10.14
+- Python 3.7
+
+## Notes
+GUI localization is in Simplified Chinese, feel free to contribute.
+
+## License
+The original repo doesn't specify a license; According to https://help.github.com/en/github/creating-cloning-and-archiving-repositories/licensing-a-repository#what-happens-if-i-dont-choose-a-license, I have to assume "all rights are reserved" by the original author, so please use your own judgement here.

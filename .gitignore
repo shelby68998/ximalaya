@@ -1,5 +1,5 @@
 # Local configs
-setup.cfg
+*.cfg
 
 # Downloads files
 *.mp3

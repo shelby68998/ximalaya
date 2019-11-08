@@ -161,7 +161,7 @@ if __name__ == '__main__':
     # Build GUI
     window = tk.Tk()
     window.geometry('917x564')  # +34+306
-    window.title('喜马拉雅专辑下载3.0 beta  BY:Snow')
+    window.title('喜马拉雅专辑下载, Originally by Snow')
     window.resizable(0, 0)
     canvas = tk.Canvas(window, bg='white')
     canvas.place(height=88, width=904, x=5, y=469)
